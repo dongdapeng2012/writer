@@ -1,6 +1,5 @@
 import tensorflow as tf
 import codecs
-import os
 import jieba
 import collections
 import re

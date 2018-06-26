@@ -1,39 +1,21 @@
-import tensorflow as tf
-from readdata import dataproducer
+import os
+import random
 import numpy as np
-import random, os
+import tensorflow as tf
 
-def random_distribution():
-    """Generate a random column of probabilities."""
-    b = np.random.uniform(0.0, 1.0, size=[1, vocab_size])
-    return b / np.sum(b, 1)[:, None]
-    
-def sample_distribution(distribution):# choose under the probabilities
-    """Sample one element from a distribution assumed to be an array of normalized
-    probabilities.
-    """
-    r = random.uniform(0, 1)
-    s = 0
-    for i in range(len(distribution[0])):
-        s += distribution[0][i]
-        if s >= r:
-            return i
-    return len(distribution) - 1
+from distribution import *
+from readdata import dataproducer
+from writer import *
     
 def sample(prediction):
     d = sample_distribution(prediction)
     re = []
     re.append(d)
     return re
-
-def writer(path, wr_sentence, wr_type):
-    with open("%s"%path,wr_type) as f:#格式化字符串还能这么用！
-        for i in wr_sentence:
-            f.write(i)
     
 learning_rate = 2
 num_steps = 200
-hidden_size = 200
+hidden_size = 100
 keep_prob = 1.0
 lr_decay = 0.5
 batch_size = 20
@@ -42,9 +24,9 @@ max_epoch = 14
 maxrange=1000
 output_length = 50
 
-model_path = "./writer_001/tmp/model.ckpt"
+model_path = "/PyProj/writer_001/tmp/model.ckpt"
 sentence_path = "./writer_001/tmp/sentence.txt"
-filename = "./writer_001/noval001.txt"
+filename = "./writer_001/3390.txt"
 
 
 x,y,id_to_word = dataproducer(batch_size, num_steps, filename)
@@ -70,6 +52,10 @@ test_inputs = tf.nn.embedding_lookup(embedding, test_input)
 
 outputs = []
 initializer = tf.random_uniform_initializer(-0.1,0.1)
+
+saver = tf.train.Saver()
+
+
 
 with tf.variable_scope("Model", reuse = None, initializer = initializer):
     with tf.variable_scope("r", reuse = None, initializer = initializer):
@@ -99,42 +85,37 @@ with tf.variable_scope("Model", reuse = None, initializer = initializer):
         (celloutput,teststate)= cell(test_inputs, teststate)
         partial_logits = tf.matmul(celloutput, softmax_w) + softmax_b
         partial_logits = tf.nn.softmax(partial_logits)
-
-
-saver = tf.train.Saver()
-
-sv = tf.train.Supervisor(logdir='writer_001/log')
-
-with sv.managed_session() as sess:
-
+        
+sv = tf.train.Supervisor(logdir=None)
+with sv.managed_session() as session:
     costs = 0
     iters = 0
 
-    if os.access(model_path+'.meta', os.W_OK):
-        saver.restore(sess, model_path)
-        print("Model restored from file: %s" % model_path)
-
     for i in range(maxrange+1):
-
-        _,l= sess.run([optimizer, cost])
-
+        if i == 1:
+            if os.access(model_path+'.meta', os.W_OK):
+                saver.restore(session, model_path)
+                print("Model restored from file: %s" % model_path)
+            else:
+                _,l= session.run([optimizer, cost])
+        else:
+            _,l= session.run([optimizer, cost])
         costs += l
         iters +=num_steps
         perplextity = np.exp(costs / iters)
-        if i%20 == 0:
+        if i%50 == 0:
             print(perplextity)
         if i%100 == 0:
-            p = random_distribution()
+            p = random_distribution(vocab_size)
             b = sample(p)
             sentence = id_to_word[b[0]]
             for j in range(output_length):
-                test_output = sess.run(partial_logits, feed_dict={test_input:b})
+                test_output = session.run(partial_logits, feed_dict={test_input:b})
                 b = sample(test_output)
                 sentence += id_to_word[b[0]]
             print(sentence)  
             # Save model weights to disk
-            save_path = saver.save(sess, model_path)
+            save_path = saver.save(session, model_path)
             print("Model saved in file: %s" % save_path)  
             writer(sentence_path, sentence, 'w')
             print("sentence saved in file: %s" % sentence_path) 
-            print('++++++++++++')

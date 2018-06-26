@@ -1,35 +1,17 @@
-import tensorflow as tf
-from readdata import readfile, dataproducer, os
-import numpy as np
+import os
 import random
+import numpy as np
+import tensorflow as tf
 
-def random_distribution():
-    """Generate a random column of probabilities."""
-    b = np.random.uniform(0.0, 1.0, size=[1, vocab_size])
-    return b / np.sum(b, 1)[:, None]
-    
-def sample_distribution(distribution):# choose under the probabilities
-    """Sample one element from a distribution assumed to be an array of normalized
-    probabilities.
-    """
-    r = random.uniform(0, 1)
-    s = 0
-    for i in range(len(distribution[0])):
-        s += distribution[0][i]
-        if s >= r:
-            return i
-    return len(distribution) - 1
+from distribution import *
+from readdata import dataproducer
+from writer import *
     
 def sample(prediction):
     d = sample_distribution(prediction)
     re = []
     re.append(d)
     return re
-
-def writer(path, wr_sentence, wr_type):
-    with open("%s"%path,wr_type) as f:#格式化字符串还能这么用！
-        for i in wr_sentence:
-            f.write(i)
     
 learning_rate = 2
 num_steps = 200
@@ -109,22 +91,19 @@ with sv.managed_session() as session:
     costs = 0
     iters = 0
 
+    if os.access(model_path+'.meta', os.W_OK):
+        saver.restore(session, model_path)
+        print("Model restored from file: %s" % model_path)
+
     for i in range(maxrange+1):
-        if i == 1:
-            if os.access(model_path+'.meta', os.W_OK):
-                saver.restore(session, model_path)
-                print("Model restored from file: %s" % model_path)
-            else:
-                _,l= session.run([optimizer, cost])
-        else:
-            _,l= session.run([optimizer, cost])
+        _,l= session.run([optimizer, cost])
         costs += l
         iters +=num_steps
         perplextity = np.exp(costs / iters)
         if i%50 == 0:
             print(perplextity)
         if i%100 == 0:
-            p = random_distribution()
+            p = random_distribution(vocab_size)
             b = sample(p)
             sentence = id_to_word[b[0]]
             for j in range(output_length):
@@ -137,4 +116,3 @@ with sv.managed_session() as session:
             print("Model saved in file: %s" % save_path)  
             writer(sentence_path, sentence, 'w')
             print("sentence saved in file: %s" % sentence_path) 
-            
