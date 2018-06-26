@@ -12,14 +12,13 @@ def sample(prediction):
     re = []
     re.append(d)
     return re
-    
-learning_rate = 2
+
 num_steps = 200
-hidden_size = 100
+hidden_size = 500
 keep_prob = 1.0
 lr_decay = 0.5
 batch_size = 20
-num_layers = 3
+num_layers = 4
 max_epoch = 14
 maxrange=1000
 output_length = 50
@@ -91,15 +90,15 @@ with sv.managed_session() as session:
     costs = 0
     iters = 0
 
+    if os.access(model_path+'.meta', os.W_OK):
+        try:
+            saver.restore(session, model_path)
+            print("Model restored from file: %s" % model_path)
+        except Exception as err:  
+            print(err)
+
     for i in range(maxrange+1):
-        if i == 1:
-            if os.access(model_path+'.meta', os.W_OK):
-                saver.restore(session, model_path)
-                print("Model restored from file: %s" % model_path)
-            else:
-                _,l= session.run([optimizer, cost])
-        else:
-            _,l= session.run([optimizer, cost])
+        _,l= session.run([optimizer, cost])
         costs += l
         iters +=num_steps
         perplextity = np.exp(costs / iters)

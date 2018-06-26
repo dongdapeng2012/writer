@@ -12,21 +12,20 @@ def sample(prediction):
     re = []
     re.append(d)
     return re
-    
-learning_rate = 2
+
 num_steps = 200
-hidden_size = 100
+hidden_size = 500
 keep_prob = 1.0
 lr_decay = 0.5
 batch_size = 20
-num_layers = 3
+num_layers = 4
 max_epoch = 14
 maxrange=1000
 output_length = 50
 
-model_path = "/PyProj/writer_001/tmp/model.ckpt"
-sentence_path = "./writer_001/tmp/sentence.txt"
-filename = "./writer_001/3390.txt"
+model_path = "./writer/tmp/model.ckpt"
+sentence_path = "./writer/tmp/sentence.txt"
+filename = "./writer/noval001.txt"
 
 
 x,y,id_to_word = dataproducer(batch_size, num_steps, filename)
@@ -92,8 +91,11 @@ with sv.managed_session() as session:
     iters = 0
 
     if os.access(model_path+'.meta', os.W_OK):
-        saver.restore(session, model_path)
-        print("Model restored from file: %s" % model_path)
+        try:
+            saver.restore(session, model_path)
+            print("Model restored from file: %s" % model_path)
+        except Exception as err:  
+            print("Model not match, cannot be restored.")
 
     for i in range(maxrange+1):
         _,l= session.run([optimizer, cost])
